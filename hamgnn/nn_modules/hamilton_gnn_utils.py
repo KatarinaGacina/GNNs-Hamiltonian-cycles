@@ -265,7 +265,7 @@ class HamFinderGNN(HamiltonSolver, torch_lightning.LightningModule):
     def update_accuracy_metrics(self, accuracy_metrics_tag: str, graphs: list[torch_g.data.Data], solutions: list[list[int]]):
         if accuracy_metrics_tag not in self.accuracy_metrics_central_dict:
             self.accuracy_metrics_central_dict[accuracy_metrics_tag] = torch.nn.ModuleDict({
-                name: torchmetrics.Accuracy(compute_on_step=False)
+                name: torchmetrics.Accuracy(task="binary", compute_on_step=False)
                 for name in ("hamiltonian_cycle", "hamiltonian_path", "90_perc_cycle", "90_perc_path")})
         accuracy_metrics = self.accuracy_metrics_central_dict[accuracy_metrics_tag]
 

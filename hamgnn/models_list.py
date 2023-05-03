@@ -14,6 +14,9 @@ import hamgnn.data.DataModules as DataModules
 import hamgnn.model_utils as model_utils
 import hamgnn.callbacks as my_callbacks
 
+from hamgnn.nn_modules.GraphConvolutionalNN import EncodeProcessDecodeAlgorithmGCN
+from hamgnn.nn_modules.GraphAttentionNN import EncodeProcessDecodeAlgorithmGAT
+
 train_request_HamS = model_utils.ModelTrainRequest(
     model_class = EncodeProcessDecodeAlgorithm,
     # datamodule_class = DataModules.ArtificialCycleWithDoubleEvaluationDataModule,
@@ -202,6 +205,18 @@ train_request_HamS_gpu_large_size_50.arguments["datamodule_hyperparams"].update(
 # GNN operations include random features
 train_request_HamS_gpu_with_rand_node_encoding = copy.deepcopy(train_request_HamS_gpu)
 train_request_HamS_gpu_with_rand_node_encoding.arguments["model_class"] = EncodeProcessDecodeRandFeatures
+
+#GCN
+train_request_HamS_gpu_GCN = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
+train_request_HamS_gpu_GCN.arguments["model_class"] = EncodeProcessDecodeAlgorithmGCN
+train_request_HamS_gpu_GCN.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GCN.arguments["trainer_hyperparams"].update({"max_epochs": 100})
+
+#GAT
+train_request_HamS_gpu_GAT = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
+train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGAT
+train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 1})
 
 # Ablation, persistent features removed
 train_request_HamS_gpu_no_hidden_with_random_node_encoding = copy.deepcopy(train_request_HamS_no_hidden)

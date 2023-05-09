@@ -13,11 +13,11 @@ in models_list.py append:
 
 from hamgnn.nn_modules.GraphAttentionNN import EncodeProcessDecodeAlgorithmGAT
 
-#GCN
+#GAT
 train_request_HamS_gpu_GAT = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
-train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGCN
+train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGAT
 train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 2})
-train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 10}) 
+train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 """
 
 class GATlayer(torch_g.nn.MessagePassing):

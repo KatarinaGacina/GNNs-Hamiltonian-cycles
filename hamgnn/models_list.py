@@ -20,6 +20,8 @@ from hamgnn.nn_modules.GraphAttentionNN import EncodeProcessDecodeAlgorithmGAT
 from hamgnn.nn_modules.GraphConvolutionalNNe import EncodeProcessDecodeAlgorithmGCNedge
 from hamgnn.nn_modules.GraphAttentionNNe import EncodeProcessDecodeAlgorithmGATedge
 
+from hamgnn.nn_modules.GraphSage import EncodeProcessDecodeAlgorithmGraphSage
+
 train_request_HamS = model_utils.ModelTrainRequest(
     model_class = EncodeProcessDecodeAlgorithm,
     # datamodule_class = DataModules.ArtificialCycleWithDoubleEvaluationDataModule,
@@ -232,6 +234,12 @@ train_request_HamS_gpu_GATe = copy.deepcopy(train_request_HamS_gpu_with_rand_nod
 train_request_HamS_gpu_GATe.arguments["model_class"] = EncodeProcessDecodeAlgorithmGATedge
 train_request_HamS_gpu_GATe.arguments["model_hyperparams"].update({"processor_depth": 2})
 train_request_HamS_gpu_GATe.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
+
+#GraphSage
+train_request_HamS_gpu_gsage = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
+train_request_HamS_gpu_gsage.arguments["model_class"] = EncodeProcessDecodeAlgorithmGraphSage
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_gsage.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 
 # Ablation, persistent features removed
 train_request_HamS_gpu_no_hidden_with_random_node_encoding = copy.deepcopy(train_request_HamS_no_hidden)

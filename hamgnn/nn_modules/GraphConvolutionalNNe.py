@@ -68,9 +68,8 @@ class GCNeConvLayer(torch_g.nn.MessagePassing):
     def message(self, x_j, norm):
         return norm * x_j
     
-
 class GCNe(torch.nn.Module):
-    def __init__(self, dim, edges_dim=1, nr_layers=2):
+    def __init__(self, dim, edges_dim=1, nr_layers=1):
         assert nr_layers >= 1
 
         super(GCNe, self).__init__()
@@ -80,27 +79,29 @@ class GCNe(torch.nn.Module):
         self.nr_layers = nr_layers
 
         self.layers = nn.ModuleList()
+        self.activations = nn.ModuleList()
+
+        i = 0
+        n = nr_layers - 1
+
         for layer_index in range(nr_layers):
             self.layers.append(GCNeConvLayer(dim, dim))
 
-    def forward(self, x, edge_index, edge_weight):
-        n = len(self.layers) - 1
-        i = 0
-
-        for layer in self.layers:
-            x = layer(x, edge_index, edge_weight)
-
             if (i < n):
-                layer_relu = nn.ReLU()
-                x = layer_relu(x)
-            elif (i == n):
-                layer_act = nn.Sigmoid()
-                x = layer_act(x)
+                self.activations.append(nn.ReLU())
+            else:
+                self.activations.append(nn.Sigmoid())
 
             i += 1
 
+    def forward(self, x, edge_index, edge_weight):
+        for layer, act in zip(self.layers, self.activations):
+            x = layer(x, edge_index, edge_weight)
+            x = act(x)
+
         return x
     
+
 class EncodeProcessDecodeAlgorithmGCNedge(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
         return GCNe(dim=self.hidden_dim)

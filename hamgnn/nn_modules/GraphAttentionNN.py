@@ -16,7 +16,7 @@ from hamgnn.nn_modules.GraphAttentionNN import EncodeProcessDecodeAlgorithmGAT
 #GAT
 train_request_HamS_gpu_GAT = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGAT
-train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 """
 
@@ -61,7 +61,9 @@ class GATlayer(torch_g.nn.MessagePassing):
         return x_j * alpha.unsqueeze(-1)
     
 class GAT(torch.nn.Module):
-    def __init__(self, in_dim, hidden_dim, out_dim, heads): #in_dim = number of input features
+    def __init__(self, in_dim, hidden_dim, out_dim, heads, nr_layers):
+        assert nr_layers >= 1
+
         super(GAT, self).__init__()
 
         self.in_dim = in_dim
@@ -69,22 +71,27 @@ class GAT(torch.nn.Module):
         self.out_dim = out_dim
 
         self.heads = heads
+        self.nr_layers = nr_layers
 
-        self.gat1 = GATlayer(in_dim, hidden_dim, heads=heads)
-        self.gat2 = GATlayer(hidden_dim, out_dim, heads=1)
-        self.elu = nn.ELU()
-        self.sig = nn.Sigmoid()
+        layers = []
+        if (nr_layers == 1):
+            layers += [GATlayer(in_dim, out_dim, heads=heads)]
+        else:
+            layers += [GATlayer(in_dim, hidden_dim, heads=heads)]
+            for layer_index in range(nr_layers - 2):
+                layers += [GATlayer(hidden_dim, hidden_dim, heads=heads)]
+            layers += [GATlayer(hidden_dim, out_dim, heads=heads)]
+
+        self.layers = nn.ModuleList(layers)
 
     def forward(self, x, edge_index, edge_weights):
-        x = F.dropout(x, p=0.6, training=self.training)
-        x = self.gat1(x, edge_index, edge_weights)
-        x = self.elu(x)
-        x = F.dropout(x, p=0.6, training=self.training)
-        x = self.gat2(x, edge_index, edge_weights)
-        x = self.sig(x)
-
+        for layer in self.layers:
+            if isinstance(layer, GATlayer):
+                x = layer(x, edge_index, edge_weights)
+            else:
+                x = layer(x)
         return x
 
 class EncodeProcessDecodeAlgorithmGAT(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
-        return GAT(in_dim=self.hidden_dim, hidden_dim=self.hidden_dim, out_dim=self.hidden_dim, heads=2)
+        return GAT(in_dim=self.hidden_dim, hidden_dim=self.hidden_dim, out_dim=self.hidden_dim, heads=5, nr_layers=4)

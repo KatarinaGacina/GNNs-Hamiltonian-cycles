@@ -6,7 +6,7 @@ from torch_geometric.utils import add_remaining_self_loops, degree
 
 import hamgnn.nn_modules.EncodeProcessDecodeNN as encodeDecode
 
-#python3 terminal_scripts/train_model_variation.py --run-name gcn_model_edge_2 --gpu 1 train_request_HamS_gpu_GCNe
+#python3 terminal_scripts/train_model_variation.py --run-name gcn_edge_4l --gpu 1 train_request_HamS_gpu_GCNe
 
 """
 in models_list.py append:
@@ -16,8 +16,8 @@ from hamgnn.nn_modules.GraphConvolutionalNNe import EncodeProcessDecodeAlgorithm
 #GCN_edge
 train_request_HamS_gpu_GCNe = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GCNe.arguments["model_class"] = EncodeProcessDecodeAlgorithmGCNedge
-train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_depth": 2})
-train_request_HamS_gpu_GCNe.arguments["trainer_hyperparams"].update({"max_epochs": 10}) 
+train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_depth": 4})
+train_request_HamS_gpu_GCNe.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 """
 
 class GCNeConvLayer(torch_g.nn.MessagePassing):
@@ -61,7 +61,6 @@ class GCNeConvLayer(torch_g.nn.MessagePassing):
         out_b = self.directed_gate(x_b, edge_index, edge_weight, forward=False)
 
         out = out_f + out_b
-        out = F.relu(out)
 
         return out
 
@@ -78,30 +77,21 @@ class GCNe(torch.nn.Module):
         self.edges_dim = edges_dim
         self.nr_layers = nr_layers
 
-        self.layers = nn.ModuleList()
-        self.activations = nn.ModuleList()
-
-        i = 0
-        n = nr_layers - 1
-
+        layers = []
         for layer_index in range(nr_layers):
-            self.layers.append(GCNeConvLayer(dim, dim))
+            layers += [GCNeConvLayer(dim, dim), nn.ReLU()]
 
-            if (i < n):
-                self.activations.append(nn.ReLU())
-            else:
-                self.activations.append(nn.Sigmoid())
-
-            i += 1
+        self.layers = nn.ModuleList(layers)
 
     def forward(self, x, edge_index, edge_weight):
-        for layer, act in zip(self.layers, self.activations):
-            x = layer(x, edge_index, edge_weight)
-            x = act(x)
-
+        for layer in self.layers:
+            if isinstance(layer, GCNeConvLayer):
+                x = layer(x, edge_index, edge_weight)
+            else:
+                x = layer(x)
         return x
     
 
 class EncodeProcessDecodeAlgorithmGCNedge(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
-        return GCNe(dim=self.hidden_dim)
+        return GCNe(dim=self.hidden_dim, nr_layers=4)

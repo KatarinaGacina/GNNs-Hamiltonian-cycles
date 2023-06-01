@@ -6,7 +6,7 @@ from torch_geometric.utils import add_remaining_self_loops
 
 import hamgnn.nn_modules.EncodeProcessDecodeNN as encodeDecode
 
-#python3 terminal_scripts/train_model_variation.py --run-name gat_model_edge --gpu 1 train_request_HamS_gpu_GATe
+#python3 terminal_scripts/train_model_variation.py --run-name gat_edge_4l --gpu 1 train_request_HamS_gpu_GATe
 
 """
 in models_list.py append:
@@ -16,7 +16,7 @@ from hamgnn.nn_modules.GraphAttentionNNe import EncodeProcessDecodeAlgorithmGATe
 #GAT
 train_request_HamS_gpu_GATe = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GATe.arguments["model_class"] = EncodeProcessDecodeAlgorithmGATedge
-train_request_HamS_gpu_GATe.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GATe.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GATe.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 """
 
@@ -29,10 +29,10 @@ class GATelayer(torch_g.nn.MessagePassing):
         self.heads = heads
 
         self.w_f = nn.Linear(2 * in_channels, out_channels * heads)
-        nn.init.xavier_normal_(self.w.weight)
+        nn.init.xavier_normal_(self.w_f.weight)
 
         self.w_b = nn.Linear(2 * in_channels, out_channels * heads)
-        nn.init.xavier_normal_(self.w.weight)
+        nn.init.xavier_normal_(self.w_b.weight)
 
         self.att_f = nn.Parameter(torch.zeros(heads, out_channels, 1))
         nn.init.xavier_uniform_(self.att_f.data)
@@ -47,10 +47,10 @@ class GATelayer(torch_g.nn.MessagePassing):
         out_f = self.directed_gate(x, edge_index, edge_weight, forward=True)
         out_b = self.directed_gate(x, edge_index, edge_weight, forward=False)
 
-        out = out_f + out_b
+        out_f = out_f.mean(dim=0).mean(dim=0)
+        out_b = out_b.mean(dim=0).mean(dim=0)
 
-        out = out.mean(dim=0).mean(dim=0)
-        out = F.relu(out)
+        out = out_f + out_b
 
         return out
     
@@ -95,7 +95,9 @@ class GATelayer(torch_g.nn.MessagePassing):
         return x_j * alpha.unsqueeze(-1)
     
 class GATe(torch.nn.Module):
-    def __init__(self, in_dim, hidden_dim, out_dim, heads): #in_dim = number of input features
+    def __init__(self, in_dim, hidden_dim, out_dim, heads, nr_layers):
+        assert nr_layers >= 1
+
         super(GATe, self).__init__()
 
         self.in_dim = in_dim
@@ -103,22 +105,28 @@ class GATe(torch.nn.Module):
         self.out_dim = out_dim
 
         self.heads = heads
+        self.nr_layers = nr_layers
 
-        self.gat1 = GATelayer(in_dim, hidden_dim, heads=heads)
-        self.gat2 = GATelayer(hidden_dim, out_dim, heads=1)
-        self.elu = nn.ELU()
-        self.sig = nn.Sigmoid()
+        layers = []
+        if (nr_layers == 1):
+            layers += [GATelayer(in_dim, out_dim, heads=heads)]
+        else:
+            layers += [GATelayer(in_dim, hidden_dim, heads=heads)]
+            for layer_index in range(nr_layers - 2):
+                layers += [GATlayer(hidden_dim, hidden_dim, heads=heads)]
+            layers += [GATelayer(hidden_dim, out_dim, heads=heads)]
+
+        self.layers = nn.ModuleList(layers)
 
     def forward(self, x, edge_index, edge_weights):
-        x = F.dropout(x, p=0.6, training=self.training)
-        x = self.gat1(x, edge_index, edge_weights)
-        x = self.elu(x)
-        x = F.dropout(x, p=0.6, training=self.training)
-        x = self.gat2(x, edge_index, edge_weights)
-        x = self.sig(x)
-
+        for layer in self.layers:
+            if isinstance(layer, GATelayer):
+                x = layer(x, edge_index, edge_weights)
+            else:
+                x = layer(x)
         return x
 
 class EncodeProcessDecodeAlgorithmGATedge(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
-        return GATe(in_dim=self.hidden_dim, hidden_dim=self.hidden_dim, out_dim=self.hidden_dim, heads=2)
+        return GATe(in_dim=self.hidden_dim, hidden_dim=self.hidden_dim, out_dim=self.hidden_dim, heads=5, nr_layers=4)
+    

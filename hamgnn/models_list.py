@@ -214,31 +214,31 @@ train_request_HamS_gpu_with_rand_node_encoding.arguments["model_class"] = Encode
 #GCN
 train_request_HamS_gpu_GCN = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GCN.arguments["model_class"] = EncodeProcessDecodeAlgorithmGCN
-train_request_HamS_gpu_GCN.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GCN.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GCN.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
 
 #GAT
 train_request_HamS_gpu_GAT = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGAT
-train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
 
 #GCN_edge
 train_request_HamS_gpu_GCNe = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GCNe.arguments["model_class"] = EncodeProcessDecodeAlgorithmGCNedge
-train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GCNe.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
 
 #GAT_edge
 train_request_HamS_gpu_GATe = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GATe.arguments["model_class"] = EncodeProcessDecodeAlgorithmGATedge
-train_request_HamS_gpu_GATe.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_GATe.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_GATe.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 
 #GraphSage
 train_request_HamS_gpu_gsage = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_gsage.arguments["model_class"] = EncodeProcessDecodeAlgorithmGraphSage
-train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 2})
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_gsage.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 
 # Ablation, persistent features removed

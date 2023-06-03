@@ -16,8 +16,14 @@ from hamgnn.nn_modules.GraphAttentionNN import EncodeProcessDecodeAlgorithmGAT
 #GAT
 train_request_HamS_gpu_GAT = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_GAT.arguments["model_class"] = EncodeProcessDecodeAlgorithmGAT
+train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
+
+#for 1 layer:
+train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 1})
+#for 2 layers:
+train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 2})
+#for 4 layers:
 train_request_HamS_gpu_GAT.arguments["model_hyperparams"].update({"processor_depth": 4})
-train_request_HamS_gpu_GAT.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
 """
 
 class GATlayer(torch_g.nn.MessagePassing):

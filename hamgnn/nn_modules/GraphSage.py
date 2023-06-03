@@ -16,11 +16,18 @@ from hamgnn.nn_modules.GraphSage import EncodeProcessDecodeAlgorithmGraphSage
 #GraphSage
 train_request_HamS_gpu_gsage = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_gsage.arguments["model_class"] = EncodeProcessDecodeAlgorithmGraphSage
-train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 4})
 train_request_HamS_gpu_gsage.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
+
+#for 1 layer:
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 1})
+#for 2 layers:
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 2})
+#for 4 layers:
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"].update({"processor_depth": 4})
 
 #Additionally:
 train_request_HamS_gpu_gsage.arguments["model_hyperparams"]["starting_learning_rate"] = 1e-5
+train_request_HamS_gpu_gsage.arguments["model_hyperparams"]["starting_learning_rate"] = 1e-3
 """
 
 class GraphSageLayer(torch_g.nn.MessagePassing):

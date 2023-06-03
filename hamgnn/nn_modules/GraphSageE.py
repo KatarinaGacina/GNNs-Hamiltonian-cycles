@@ -17,7 +17,7 @@ from hamgnn.nn_modules.GraphSageE import EncodeProcessDecodeAlgorithmGraphSageE
 train_request_HamS_gpu_gsagee = copy.deepcopy(train_request_HamS_gpu_with_rand_node_encoding)
 train_request_HamS_gpu_gsagee.arguments["model_class"] = EncodeProcessDecodeAlgorithmGraphSageE
 train_request_HamS_gpu_gsagee.arguments["model_hyperparams"].update({"processor_depth": 4})
-train_request_HamS_gpu_gsagee.arguments["trainer_hyperparams"].update({"max_epochs": 2000}) 
+train_request_HamS_gpu_gsagee.arguments["trainer_hyperparams"].update({"max_epochs": 2000})
 """
 
 class GraphSageELayer(torch_g.nn.MessagePassing):
@@ -44,7 +44,9 @@ class GraphSageELayer(torch_g.nn.MessagePassing):
         return out
 
     def message(self, x_j, edge_attr):
-        return x_j
+        edgeAttr = torch.cat((edge_attr[:, 0].unsqueeze(1),) * self.in_dim, dim=1)
+
+        return x_j + edgeAttr
 
     def update(self, aggr_out, x, forward):
 

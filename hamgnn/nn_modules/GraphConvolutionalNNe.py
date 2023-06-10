@@ -26,18 +26,21 @@ train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_de
 train_request_HamS_gpu_GCNe.arguments["model_hyperparams"].update({"processor_depth": 4})
 """
 
+#Graph Convolutional layer with edge distinction
 class GCNeConvLayer(torch_g.nn.MessagePassing):
     def __init__(self, in_dim, out_dim):
         super().__init__(aggr='add')
         self.in_dim = in_dim
         self.out_dim = out_dim
 
+        #separate linear layers because of an edge distinction
         self.lin_f = nn.Linear(in_dim, out_dim)
         self.lin_b = nn.Linear(in_dim, out_dim)
 
     def directed_gate(self, x, edge_index, edge_weight, forward):
         num_nodes = x.size(0)
 
+        #adjust edge index according to propagation direction
         if forward:
             row, col = edge_index
             new_edge_index = edge_index
@@ -45,6 +48,7 @@ class GCNeConvLayer(torch_g.nn.MessagePassing):
             col, row = edge_index
             new_edge_index = torch.vstack((col, row))
 
+        #calculate normalization
         deg = degree(col, num_nodes, dtype=x.dtype).unsqueeze(1)
         deg_inv_sqrt = deg.pow(-0.5)
         deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
@@ -58,6 +62,7 @@ class GCNeConvLayer(torch_g.nn.MessagePassing):
     def forward(self, x, edge_index, edge_weight):
         num_nodes = x.size(0)
 
+        #adding the remaining self loops
         edge_index, edge_weight = add_remaining_self_loops(edge_index, edge_attr=edge_weight, fill_value=1, num_nodes=num_nodes)
 
         x_f = self.lin_f(x)
@@ -66,13 +71,15 @@ class GCNeConvLayer(torch_g.nn.MessagePassing):
         out_f = self.directed_gate(x_f, edge_index, edge_weight, forward=True)
         out_b = self.directed_gate(x_b, edge_index, edge_weight, forward=False)
 
+        #final result
         out = out_f + out_b
 
         return out
 
     def message(self, x_j, norm):
         return norm * x_j
-    
+
+#Graph Convolutional Neural Network with an arbitrary number of Graph Convolutional layers with edge distinction; after each of them the ReLU activation function is used
 class GCNe(torch.nn.Module):
     def __init__(self, dim, edges_dim=1, nr_layers=1):
         assert nr_layers >= 1
@@ -97,7 +104,7 @@ class GCNe(torch.nn.Module):
                 x = layer(x)
         return x
     
-
+#overridden processor part with Graph Convolutional Network with edge distinction with 4 GCN layers with edge distinction
 class EncodeProcessDecodeAlgorithmGCNedge(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
         return GCNe(dim=self.hidden_dim, nr_layers=4)

@@ -8,7 +8,7 @@ import hamgnn.nn_modules.EncodeProcessDecodeRandFeatures as encodeDecode
 #python3 terminal_scripts/train_model_variation.py --run-name gcn_4l --gpu 1 train_request_HamS_gpu_GCN
 
 """
-in models_list.py appen
+in models_list.py append:
 
 from hamgnn.nn_modules.GraphConvolutionalNN import EncodeProcessDecodeAlgorithmGCN
 
@@ -25,6 +25,7 @@ train_request_HamS_gpu_GCN.arguments["model_hyperparams"].update({"processor_dep
 train_request_HamS_gpu_GCN.arguments["model_hyperparams"].update({"processor_depth": 4})
 """
 
+#Graph Convolutional layer
 class GCNConvLayer(torch_g.nn.MessagePassing):
     def __init__(self, in_dim, out_dim):
         super().__init__(aggr='add')
@@ -38,13 +39,15 @@ class GCNConvLayer(torch_g.nn.MessagePassing):
 
     def forward(self, x, edge_index, edge_weight):
         num_nodes = x.size(0)
-        #num_node_features = x.size(1)
 
-        #adj_matrix = to_torch_coo_tensor(edge_index, edge_attr=edge_weight, size=(num_nodes, num_nodes))
+        #adding the remaining self loops
         edge_index, edge_weight = add_remaining_self_loops(edge_index, edge_attr=edge_weight, fill_value=1, num_nodes=num_nodes)
+        #adj_matrix = to_torch_coo_tensor(edge_index, edge_attr=edge_weight, size=(num_nodes, num_nodes))
 
+        #applying linear layer to node features
         x = self.lin(x)
 
+        #calculating the normalization
         row, col = edge_index
         deg = degree(col, num_nodes, dtype=x.dtype).unsqueeze(1)
         deg_inv_sqrt = deg.pow(-0.5)
@@ -56,6 +59,7 @@ class GCNConvLayer(torch_g.nn.MessagePassing):
 
         return out
 
+#Graph Convolutional Neural Network with an arbitrary number of Graph Convolutional layers; after each of them the ReLU activation function is used
 class GCN(torch.nn.Module):
     def __init__(self, dim, edges_dim=1, nr_layers=1):
         assert nr_layers >= 1
@@ -80,6 +84,7 @@ class GCN(torch.nn.Module):
                 x = layer(x)
         return x
 
+#overridden processor part with Graph Convolutional Network with 4 GCN layers
 class EncodeProcessDecodeAlgorithmGCN(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
         return GCN(dim=self.hidden_dim, nr_layers=4)

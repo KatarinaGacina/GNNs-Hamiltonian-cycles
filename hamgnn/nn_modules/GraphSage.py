@@ -30,12 +30,14 @@ train_request_HamS_gpu_gsage.arguments["model_hyperparams"]["starting_learning_r
 train_request_HamS_gpu_gsage.arguments["model_hyperparams"]["starting_learning_rate"] = 1e-3
 """
 
+#GraphSAGE layer
 class GraphSageLayer(torch_g.nn.MessagePassing):
     def __init__(self, in_dim, out_dim):
         super().__init__(aggr='mean')
         self.in_dim = in_dim
         self.out_dim = out_dim
 
+        #weights
         self.w = nn.Linear(2*in_dim, out_dim)
         nn.init.xavier_normal_(self.w.weight)
 
@@ -46,18 +48,22 @@ class GraphSageLayer(torch_g.nn.MessagePassing):
         return out
 
     def message(self, x_j, edge_attr):
+        #adding edge weights
         edgeAttr = torch.cat((edge_attr[:, 0].unsqueeze(1),) * self.in_dim, dim=1)
 
         return x_j + edgeAttr
 
     def update(self, aggr_out, x):
-
+        #concat
         h = torch.cat([x, aggr_out], dim=1)
+        #apply weights
         h = self.w(h)
+        #normalization
         h = F.normalize(aggr_out)
 
         return h
 
+#GraphSAGE Neural Network with an arbitrary number of GraphSAGE layers; after each of them the ReLU activation function is used
 class GraphSage(torch.nn.Module):
     def __init__(self, dim, edges_dim=1, nr_layers=1):
         assert nr_layers >= 1
@@ -81,7 +87,8 @@ class GraphSage(torch.nn.Module):
             else:
                 x = layer(x)
         return x
-    
+
+#overridden processor part with GraphSAGE Network with 4 GraphSAGE layers    
 class EncodeProcessDecodeAlgorithmGraphSage(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
         return GraphSage(dim=self.hidden_dim, nr_layers=4)

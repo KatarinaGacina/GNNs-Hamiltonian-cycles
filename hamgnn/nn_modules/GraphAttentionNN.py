@@ -96,10 +96,10 @@ class GAT(torch.nn.Module):
         if (nr_layers == 1):
             layers += [GATlayer(in_dim, out_dim, heads=heads), nn.ReLU()]
         else:
-            layers += [GATlayer(in_dim, hidden_dim, heads=heads), nn.ReLU]
+            layers += [GATlayer(in_dim, hidden_dim, heads=heads), nn.ReLU()]
             for layer_index in range(nr_layers - 2):
-                layers += [GATlayer(hidden_dim, hidden_dim, heads=heads), nn.ReLU]
-            layers += [GATlayer(hidden_dim, out_dim, heads=heads), nn.ReLU]
+                layers += [GATlayer(hidden_dim, hidden_dim, heads=heads), nn.ReLU()]
+            layers += [GATlayer(hidden_dim, out_dim, heads=heads), nn.ReLU()]
 
         self.layers = nn.ModuleList(layers)
 

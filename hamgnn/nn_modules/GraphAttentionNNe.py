@@ -133,7 +133,7 @@ class GATe(torch.nn.Module):
         else:
             layers += [GATelayer(in_dim, hidden_dim, heads=heads), nn.ReLU()]
             for layer_index in range(nr_layers - 2):
-                layers += [GATlayer(hidden_dim, hidden_dim, heads=heads), nn.ReLU()]
+                layers += [GATelayer(hidden_dim, hidden_dim, heads=heads), nn.ReLU()]
             layers += [GATelayer(hidden_dim, out_dim, heads=heads), nn.ReLU()]
 
         self.layers = nn.ModuleList(layers)

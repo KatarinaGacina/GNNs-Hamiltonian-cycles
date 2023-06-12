@@ -93,7 +93,7 @@ class GraphSageE(torch.nn.Module):
 
     def forward(self, x, edge_index, edge_weights):
         for layer in self.layers:
-            if isinstance(layer, GraphSageLayer):
+            if isinstance(layer, GraphSageELayer):
                 x = layer(x, edge_index, edge_weights)
             else:
                 x = layer(x)
@@ -102,4 +102,4 @@ class GraphSageE(torch.nn.Module):
 #overridden processor part with GraphSAGE Network with edge distinction with 4 GraphSAGE layers with edge distinction    
 class EncodeProcessDecodeAlgorithmGraphSageE(encodeDecode.EncodeProcessDecodeAlgorithm):
     def _construct_processor(self):
-        return GraphSageE(dim=self.hidden_dim, nr_layers=1)
+        return GraphSageE(dim=self.hidden_dim, nr_layers=4)

@@ -16,6 +16,11 @@ import hamgnn.data.GraphDataset as GraphDataset
 import hamgnn.ExactSolvers as ExactSolvers
 from hamgnn.data.GraphDataset import GraphExample
 
+from torch_geometric.utils import to_networkx
+import networkx as nx
+import igraph
+import math
+from fa2 import ForceAtlas2
 
 class ErdosRenyiGraphExample(GraphExample):
     def __init__(self, graph: torch_geometric.data.Data, edge_inclusion_probability, hamiltonian_cycle: torch.Tensor, hamilton_existence_probability=None) -> None:
@@ -24,8 +29,9 @@ class ErdosRenyiGraphExample(GraphExample):
         self.hamiltonian_cycle = hamiltonian_cycle
         self.hamilton_existence_probability = hamilton_existence_probability
 
-
 class ErdosRenyiInMemoryDataset(torch.utils.data.Dataset):
+    STORAGE_EDGE_ATTR = "edge_attr"
+
     STORAGE_EDGE_INDEX_TAG = "edge_index"
     STORAGE_EDGE_INCLUSION_PROBABILITY = "edge_inclusion_probability"
     STORAGE_HAMILTONIAN_CYCLE_TAG = "hamilton_cycle"
@@ -50,6 +56,10 @@ class ErdosRenyiInMemoryDataset(torch.utils.data.Dataset):
             storage_dict[ErdosRenyiInMemoryDataset.STORAGE_NUM_NODES_TAG].append(ex.graph.num_nodes)
             storage_dict[ErdosRenyiInMemoryDataset.STORAGE_HAMILTON_EXISTENCE_PROB].append(ex.hamilton_existence_probability),
             storage_dict[ErdosRenyiInMemoryDataset.STORAGE_HAMILTONIAN_CYCLE_TAG].append(ex.hamiltonian_cycle)
+
+            if (ex.graph.edge_attr is not None):
+                storage_dict[ErdosRenyiInMemoryDataset.STORAGE_EDGE_ATTR].append(ex.graph.edge_attr)
+
         return storage_dict
 
     @staticmethod
@@ -68,18 +78,35 @@ class ErdosRenyiInMemoryDataset(torch.utils.data.Dataset):
     @staticmethod
     def from_storage_dict(storage_dict, device="cpu"):
         data_list = []
-        _zipped_dict = zip(
-            *[storage_dict[tag] for tag in [
-                ErdosRenyiInMemoryDataset.STORAGE_EDGE_INDEX_TAG,
-                ErdosRenyiInMemoryDataset.STORAGE_EDGE_INCLUSION_PROBABILITY,
-                ErdosRenyiInMemoryDataset.STORAGE_NUM_NODES_TAG,
-                ErdosRenyiInMemoryDataset.STORAGE_HAMILTONIAN_CYCLE_TAG,
-                ErdosRenyiInMemoryDataset.STORAGE_HAMILTON_EXISTENCE_PROB]
-              ])
-        for edge_index, edge_inclusion_probability, num_nodes, hamiltonian_cycle, hamilton_existence_probability in _zipped_dict:
-            edge_index = torch.tensor(edge_index, device=device)
-            graph = torch_geometric.data.Data(num_nodes=num_nodes, edge_index=edge_index)
-            data_list.append(ErdosRenyiGraphExample(graph, edge_inclusion_probability, torch.tensor(hamiltonian_cycle), hamilton_existence_probability))
+
+        if ErdosRenyiInMemoryDataset.STORAGE_EDGE_ATTR in storage_dict:
+            _zipped_dict = zip(
+                *[storage_dict[tag] for tag in [
+                    ErdosRenyiInMemoryDataset.STORAGE_EDGE_INDEX_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_EDGE_INCLUSION_PROBABILITY,
+                    ErdosRenyiInMemoryDataset.STORAGE_NUM_NODES_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_HAMILTONIAN_CYCLE_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_EDGE_ATTR,
+                    ErdosRenyiInMemoryDataset.STORAGE_HAMILTON_EXISTENCE_PROB]
+                ])
+            for edge_index, edge_inclusion_probability, num_nodes, hamiltonian_cycle, edge_attr, hamilton_existence_probability in _zipped_dict:
+                edge_index = torch.tensor(edge_index, device=device)
+                graph = torch_geometric.data.Data(num_nodes=num_nodes, edge_index=edge_index, edge_attr=edge_attr)
+                data_list.append(ErdosRenyiGraphExample(graph, edge_inclusion_probability, torch.tensor(hamiltonian_cycle), hamilton_existence_probability))
+        else:
+            _zipped_dict = zip(
+                *[storage_dict[tag] for tag in [
+                    ErdosRenyiInMemoryDataset.STORAGE_EDGE_INDEX_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_EDGE_INCLUSION_PROBABILITY,
+                    ErdosRenyiInMemoryDataset.STORAGE_NUM_NODES_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_HAMILTONIAN_CYCLE_TAG,
+                    ErdosRenyiInMemoryDataset.STORAGE_HAMILTON_EXISTENCE_PROB]
+                ])
+            for edge_index, edge_inclusion_probability, num_nodes, hamiltonian_cycle, hamilton_existence_probability in _zipped_dict: 
+                edge_index = torch.tensor(edge_index, device=device)
+                graph = torch_geometric.data.Data(num_nodes=num_nodes, edge_index=edge_index)
+                data_list.append(ErdosRenyiGraphExample(graph, edge_inclusion_probability, torch.tensor(hamiltonian_cycle), hamilton_existence_probability))
+
         return data_list
 
     @staticmethod
@@ -118,6 +145,95 @@ class ErdosRenyiInMemoryDataset(torch.utils.data.Dataset):
             out_folder, lambda s, p: GraphGenerators.ErdosRenyiGenerator.create_from_edge_probability(s, p), sizes, nr_examples,
             edge_existence_probability, solve_with_concorde, is_show_progress
             )
+    
+    @staticmethod
+    def save_to_new_file(filepath: Path, data: List[ErdosRenyiGraphExample]):
+        storage_dict = ErdosRenyiInMemoryDataset.to_new_storage_dict(data)
+        with open(filepath, 'wb') as f:
+            pickle.dump(storage_dict, f)
+
+    @staticmethod
+    def to_new_storage_dict(graph_examples: List[ErdosRenyiGraphExample]):
+        storage_dict = defaultdict(list)
+
+        for ex in graph_examples:
+            g = to_networkx(ex.graph)
+            g = nx.MultiDiGraph(g)
+
+            forceatlas2 = ForceAtlas2(
+                # Behavior alternatives
+                outboundAttractionDistribution=True,  # Dissuade hubs
+                linLogMode=False,  # NOT IMPLEMENTED
+                adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
+                edgeWeightInfluence=0,
+
+                # Performance
+                jitterTolerance=1.0,  # Tolerance
+                barnesHutOptimize=True,
+                barnesHutTheta=1.2,
+                multiThreaded=False,  # NOT IMPLEMENTED
+
+                # Tuning
+                scalingRatio=2.0,
+                strongGravityMode=False,
+                gravity=1.0,
+
+                # Log
+                verbose=False)
+            
+            layout = forceatlas2.forceatlas2_networkx_layout(G=g, pos=None, iterations=200)
+
+            graph_edges = ex.graph.edge_index
+            edges_list = graph_edges.transpose(0, 1).tolist()
+
+            edge_attr = []
+            for x, y in edges_list:  
+                x1, y1 = layout[x]
+                x2, y2 = layout[y]
+                
+                distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                edge_attr.append([distance])
+
+            ex.graph.edge_attr = torch.tensor(edge_attr)
+
+            edge_index = ex.graph.edge_index
+            edge_index_list = [[int(x.item()) for x in edge_index[i]] for i in range(2)]
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_EDGE_INDEX_TAG].append(edge_index_list)
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_EDGE_INCLUSION_PROBABILITY].append(ex.edge_inclusion_probability)
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_NUM_NODES_TAG].append(ex.graph.num_nodes)
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_HAMILTON_EXISTENCE_PROB].append(ex.hamilton_existence_probability),
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_HAMILTONIAN_CYCLE_TAG].append(ex.hamiltonian_cycle)
+            storage_dict[ErdosRenyiInMemoryDataset.STORAGE_EDGE_ATTR].append(ex.graph.edge_attr)
+        return storage_dict
+
+    @staticmethod
+    def transform(path, new_path):
+        assert path is not None
+        assert new_path is not None
+
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        
+        file_names = os.listdir(path)
+        file_paths = [os.path.join(path, file_name) for file_name in file_names]
+        path_list = [Path(p) for p in file_paths]
+
+        search_tree = []
+
+        for path in path_list:
+            to_check = [f for f in path.iterdir()] if path.is_dir() else [path]
+            search_tree += [f for f in to_check if f.is_file() and f.suffix == ".pt"]
+
+        for p in search_tree:
+            file_name = os.path.basename(p)
+            print(file_name)
+            data = ErdosRenyiInMemoryDataset.load_from_file(p)
+
+            filepath = Path(new_path) / file_name
+            print(filepath)
+            ErdosRenyiInMemoryDataset.save_to_new_file(filepath, data)
+
+            print()
 
     def __init__(self, path_list, transform=None):
         assert path_list is not None

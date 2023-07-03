@@ -8,6 +8,7 @@ class BeamSearchWrapper2(HamFinderGNN):
                 inference_batch_size=8, starting_learning_rate=1e-4, optimizer_class=None, optimizer_hyperparams=None, lr_scheduler_class=None, lr_scheduler_hyperparams=None, val_dataloader_tags=None, beam_width=5):
         super().__init__(graph_updater_class,
                 inference_batch_size, starting_learning_rate, optimizer_class, optimizer_hyperparams, lr_scheduler_class, lr_scheduler_hyperparams, val_dataloader_tags)
+        #beam width initialization
         self.beam_width = beam_width
 
     def solve_graphs(self, graphs: list[torch_g.data.Data]) -> list[list[int]]:

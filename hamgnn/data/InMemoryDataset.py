@@ -158,7 +158,6 @@ class ErdosRenyiInMemoryDataset(torch.utils.data.Dataset):
 
         for ex in graph_examples:
             g = to_networkx(ex.graph)
-            g = nx.MultiDiGraph(g)
 
             forceatlas2 = ForceAtlas2(
                 # Behavior alternatives

@@ -61,7 +61,7 @@ class EncodeProcessDecodeAlgorithm(gnn_utils.HamFinderGNN):
             
             """
             #alternative
-            graph = nx.MultiGraph()
+            graph = nx.DiGraph()
     
             graph.add_nodes_from(range(ptr[0], ptr[-1]))
 
@@ -120,7 +120,7 @@ class EncodeProcessDecodeAlgorithm(gnn_utils.HamFinderGNN):
                 start_id = ptr[i]
                 end_id = ptr[i + 1]
     
-                graph = nx.MultiGraph()
+                graph = nx.DiGraph()
     
                 graph.add_nodes_from(range(start_id, end_id))
 
